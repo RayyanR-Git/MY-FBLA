@@ -3,72 +3,71 @@
 let currentNodeKey = "start";
 let currentChapter = 'Start';
 let timer = null;
-const CHOICE_TIME = 20; // seconds
-
-// Add voice recognition setup
-let recognition;
-let isListening = false;
+const CHOICE_TIME = 30; // seconds
 
 // Add a flag to prevent multiple popups
 let isPaused = false;
 
-// Voice recognition setup with permission handling
-async function setupVoiceRecognition() {
+// Add Web Speech API setup
+let recognition;
+let isListening = false;
+
+function setupVoiceRecognition() {
     try {
-        // First check browser support
+        // Check if browser supports speech recognition
         if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-            console.warn('Voice recognition not supported. Please use Chrome or Edge.');
-            showAlert('Voice recognition is only supported in Chrome and Edge browsers.');
-            return;
+            throw new Error('Browser does not support speech recognition');
         }
 
-        // Ask for microphone permission first
-        const permission = await navigator.mediaDevices.getUserMedia({ audio: true });
-        
-        // If we got permission, set up recognition
+        // Initialize speech recognition
         recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
         recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
+        recognition.interimResults = false; // Changed to false to get final results only
+
+        recognition.onresult = (event) => {
+            const lastResult = event.results[event.results.length - 1];
+            const transcript = lastResult[0].transcript.toLowerCase().trim();
+
+            // Only pause if the exact word "stop" is said
+            if (transcript === "stop") {
+                showPausePopup();
+            }
+        };
 
         recognition.onstart = () => {
             isListening = true;
-            console.log('Voice recognition started');
+            showAlert('Voice commands enabled (say "stop" to pause)');
         };
 
         recognition.onend = () => {
+            // Restart recognition if it ends
             if (isListening) {
                 recognition.start();
             }
         };
 
-        recognition.onresult = (event) => {
-            if (isPaused) return;
-            
-            const transcript = Array.from(event.results)
-                .map(result => result[0].transcript)
-                .join('');
-
-            if (transcript.toLowerCase().includes('stop')) {
-                showPausePopup();
-            }
-        };
-
         recognition.onerror = (event) => {
-            console.error('Voice recognition error:', event.error);
+            console.error('Speech recognition error:', event.error);
             handleVoiceError(event.error);
         };
 
-        // Start recognition
         recognition.start();
 
     } catch (error) {
-        console.error('Setup error:', error);
+        console.error('Voice recognition setup error:', error);
         if (error.name === 'NotAllowedError') {
             showAlert('Please allow microphone access to use voice commands.');
         } else {
             showAlert('Could not start voice recognition. Please try refreshing the page.');
         }
+    }
+}
+
+function handleVoiceCommand(text) {
+    if (isPaused) return;
+    
+    if (text.includes('stop')) {
+        showPausePopup();
     }
 }
 
@@ -830,14 +829,11 @@ window.onload = async function() {
             });
         }
 
-        // Show initial message about voice commands
-        showAlert('Click anywhere to enable voice commands (say "stop" to pause)');
+        showAlert('Click anywhere to enable voice commands');
 
         // Wait for user interaction before starting voice recognition
-        document.body.addEventListener('click', async () => {
-            if (!isListening) {
-                await setupVoiceRecognition();
-            }
+        document.body.addEventListener('click', () => {
+            setupVoiceRecognition();
         }, { once: true });
 
         // Initialize the game
@@ -846,6 +842,8 @@ window.onload = async function() {
     } catch (error) {
         console.error('Error during initialization:', error);
         handleError(error);
+        // Ensure game is still playable without voice recognition
+        updateDisplay(storyNodes.start);
     }
 };
 

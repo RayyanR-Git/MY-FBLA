@@ -65,6 +65,8 @@ body {
     font-size: 1.5rem;
     opacity: 0;
     animation: fadeIn 1s ease forwards 1s;
+    text-align: center;
+    width: 100%;
 }
 
 .description {
@@ -139,12 +141,6 @@ body {
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes glowPulse {
-    0% { text-shadow: 0 0 20px var(--glow-color); }
-    50% { text-shadow: 0 0 30px var(--glow-color), 0 0 40px var(--glow-spread); }
-    100% { text-shadow: 0 0 20px var(--glow-color); }
 }
 
 #start-btn {
@@ -435,52 +431,14 @@ body {
     }
 }
 
-/* Glitch effect container */
-.glitch-container {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-/* Glitch text effect */
-.glitch {
-    font-family: 'Cinzel', serif;
-    font-size: 5rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    position: relative;
-    text-shadow: 0.05em 0 0 #00fffc, -0.03em -0.04em 0 #fc00ff,
-                 0.025em 0.04em 0 #fffc00;
-    animation: glitch 725ms infinite;
-    margin: 0;
-    margin-bottom: 1rem;
-}
-
-.glitch span {
-    position: absolute;
-    top: 0;
-    left: 0;
-}
-
-.glitch span:first-child {
-    animation: glitch 500ms infinite;
-    clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%);
-    transform: translate(-0.04em, -0.03em);
-    opacity: 0.75;
-}
-
-.glitch span:last-child {
-    animation: glitch 375ms infinite;
-    clip-path: polygon(0 65%, 100% 65%, 100% 100%, 0 100%);
-    transform: translate(0.04em, 0.03em);
-    opacity: 0.75;
-}
-
 /* Tagline styling */
 .tagline {
     font-family: 'Playfair Display', serif;
     font-size: 1.5rem;
     opacity: 0;
     animation: fadeIn 1s ease forwards 1s;
+    text-align: center;
+    width: 100%;
 }
 
 /* Feature box styling */
@@ -554,38 +512,6 @@ body {
     left: 100%;
 }
 
-/* Animations */
-@keyframes glitch {
-    0% {
-        text-shadow: 0.05em 0 0 #00fffc, -0.03em -0.04em 0 #fc00ff,
-                     0.025em 0.04em 0 #fffc00;
-    }
-    15% {
-        text-shadow: 0.05em 0 0 #00fffc, -0.03em -0.04em 0 #fc00ff,
-                     0.025em 0.04em 0 #fffc00;
-    }
-    16% {
-        text-shadow: -0.05em -0.025em 0 #00fffc, 0.025em 0.035em 0 #fc00ff,
-                     -0.05em -0.05em 0 #fffc00;
-    }
-    49% {
-        text-shadow: -0.05em -0.025em 0 #00fffc, 0.025em 0.035em 0 #fc00ff,
-                     -0.05em -0.05em 0 #fffc00;
-    }
-    50% {
-        text-shadow: 0.05em 0.035em 0 #00fffc, 0.03em 0 0 #fc00ff,
-                     0 -0.04em 0 #fffc00;
-    }
-    99% {
-        text-shadow: 0.05em 0.035em 0 #00fffc, 0.03em 0 0 #fc00ff,
-                     0 -0.04em 0 #fffc00;
-    }
-    100% {
-        text-shadow: -0.05em 0 0 #00fffc, -0.025em -0.04em 0 #fc00ff,
-                     -0.04em -0.025em 0 #fffc00;
-    }
-}
-
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -618,7 +544,7 @@ body {
     }
 }
 
-/* Replace your existing glitch styles with these new cyberpunk styles */
+/* Update cyberpunk class to remove all animations and hover effects */
 .cyberpunk {
     font-family: 'Cinzel', serif;
     font-size: 5rem;
@@ -631,88 +557,73 @@ body {
         0 0 40px rgba(0, 255, 255, 0.3),
         0 0 80px rgba(0, 255, 255, 0.2),
         0 0 90px rgba(0, 255, 255, 0.1);
-    animation: flicker 4s infinite alternate;
     position: relative;
     margin: 0;
+}
+
+/* Remove the ::before pseudo-element that was causing the glow animation */
+
+/* Add these styles that were in the JavaScript file */
+.pause-screen {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+
+.pause-content {
+    background: var(--primary);
+    padding: 2.5rem;
+    border-radius: 12px;
+    box-shadow: 0 0 30px var(--glow-color);
+    text-align: center;
+    animation: slideIn 0.3s ease;
+}
+
+.pause-title {
+    font-family: 'Cinzel', serif;
+    font-size: 2.2rem;
+    margin-bottom: 2rem;
+    color: var(--text);
+}
+
+.pause-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.pause-buttons button {
+    padding: 0.8rem 1.5rem;
+    font-size: 1rem;
+    background: transparent;
+    border: 1px solid var(--text-muted);
+    color: var(--text);
+    border-radius: 4px;
     cursor: pointer;
-    transition: all 0.4s ease;
+    transition: all 0.3s ease;
+    font-family: 'Open Sans', sans-serif;
 }
 
-.cyberpunk::before {
-    content: 'BANDERSNATCH';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    color: #fff;
-    filter: blur(15px);
-    opacity: 0.7;
-    animation: glowPulse 2s infinite;
-    transition: all 0.4s ease;
+.pause-buttons button:hover {
+    background: var(--primary-light);
+    border-color: var(--text);
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px var(--glow-spread),
+                0 0 5px var(--glow-color);
 }
 
-.cyberpunk::after {
-    content: 'BANDERSNATCH';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-        transparent 50%,
-        rgba(0, 255, 255, 0.05),
-        transparent 100%
-    );
-    background-size: 100% 4px;
-    animation: scan 2s infinite linear;
-    transition: all 0.4s ease;
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
-/* Removed hover effect for cyberpunk */
-
-@keyframes flicker {
-    0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% {
-        opacity: 0.99;
-        text-shadow: 
-            0 0 5px #fff,
-            0 0 10px #fff,
-            0 0 20px rgba(255, 255, 255, 0.5),
-            0 0 40px rgba(0, 255, 255, 0.3),
-            0 0 80px rgba(0, 255, 255, 0.2),
-            0 0 90px rgba(0, 255, 255, 0.1);
-    }
-    20%, 21.999%, 63%, 63.999%, 65%, 69.999% {
-        opacity: 0.6;
-        text-shadow: none;
-    }
-}
-
-@keyframes glowPulse {
-    0%, 100% { 
-        filter: blur(15px) brightness(1);
-    }
-    50% { 
-        filter: blur(15px) brightness(1.2);
-    }
-}
-
-@keyframes scan {
-    0% {
-        background-position: 0 -100vh;
-    }
-    100% {
-        background-position: 0 100vh;
-    }
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .cyberpunk {
-        font-size: 3rem;
-    }
-    .cyberpunk:hover {
-        letter-spacing: 2px;
-    }
+@keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
 }
   

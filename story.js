@@ -24,7 +24,7 @@ function setupVoiceRecognition() {
         recognition.continuous = true; // Changed to false for better Chrome performance
         recognition.interimResults = false;
         recognition.lang = 'en-US';
-        recognition.maxAlternatives = 3; // Increase alternatives for better accuracy
+        recognition.maxAlternatives = 2; // Increase alternatives for better accuracy
 
         recognition.onresult = (event) => {
             const results = event.results[0];

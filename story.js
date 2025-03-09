@@ -3,7 +3,7 @@
 let currentNodeKey = "start";
 let currentChapter = 'Start';
 let timer = null;
-const CHOICE_TIME = 30; // seconds
+const CHOICE_TIME = 60; // seconds
 
 // Add a flag to prevent multiple popups
 let isPaused = false;
@@ -14,24 +14,30 @@ let isListening = false;
 
 function setupVoiceRecognition() {
     try {
-        // Check if browser supports speech recognition
-        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        // Check specifically for Chrome
+        if (!('webkitSpeechRecognition' in window)) {
             throw new Error('Browser does not support speech recognition');
         }
 
-        // Initialize speech recognition
-        recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.continuous = true;
-        recognition.interimResults = false; // Changed to false to get final results only
+        // Initialize speech recognition optimized for Chrome
+        recognition = new webkitSpeechRecognition(); // Use webkit version specifically
+        recognition.continuous = true; // Changed to false for better Chrome performance
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+        recognition.maxAlternatives = 3; // Increase alternatives for better accuracy
 
         recognition.onresult = (event) => {
-            const lastResult = event.results[event.results.length - 1];
-            const transcript = lastResult[0].transcript.toLowerCase().trim();
-
-            // Only pause if the exact word "stop" is said
-            if (transcript === "stop") {
-                showPausePopup();
+            const results = event.results[0];
+            // Check all alternatives for "stop"
+            for (let i = 0; i < results.length; i++) {
+                const transcript = results[i].transcript.toLowerCase().trim();
+                if (transcript == "stop") {
+                    showPausePopup();
+                    break;
+                }
             }
+            // Restart recognition immediately after processing result
+            recognition.start();
         };
 
         recognition.onstart = () => {
@@ -39,26 +45,30 @@ function setupVoiceRecognition() {
             showAlert('Voice commands enabled (say "stop" to pause)');
         };
 
-        recognition.onend = () => {
-            // Restart recognition if it ends
-            if (isListening) {
-                recognition.start();
-            }
-        };
-
         recognition.onerror = (event) => {
             console.error('Speech recognition error:', event.error);
-            handleVoiceError(event.error);
+            // Restart after a short delay on error
+            setTimeout(() => {
+                if (isListening) recognition.start();
+            }, 1000);
         };
 
         recognition.start();
 
     } catch (error) {
         console.error('Voice recognition setup error:', error);
-        if (error.name === 'NotAllowedError') {
-            showAlert('Please allow microphone access to use voice commands.');
-        } else {
-            showAlert('Could not start voice recognition. Please try refreshing the page.');
+        showAlert('Could not start voice recognition. Please check your microphone settings.');
+    }
+}
+
+// Add a function to stop recognition when needed
+function stopVoiceRecognition() {
+    if (recognition) {
+        isListening = false;
+        try {
+            recognition.stop();
+        } catch (error) {
+            console.error('Error stopping recognition:', error);
         }
     }
 }

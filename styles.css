@@ -527,23 +527,6 @@ body {
         transform: translateY(0);
     }
 }
-
-/* Responsive design */
-@media (max-width: 768px) {
-    .glitch {
-        font-size: 3rem;
-    }
-
-    .feature-box {
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .feature {
-        font-size: 0.9rem;
-    }
-}
-
 /* Update cyberpunk class to remove all animations and hover effects */
 .cyberpunk {
     font-family: 'Cinzel', serif;

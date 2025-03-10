@@ -24,7 +24,7 @@ function setupVoiceRecognition() {
         return;
     }
 
-    // Create a new recognition instance
+    // Always create a new recognition instance
     recognition = new webkitSpeechRecognition();
     
     // Basic settings
@@ -48,10 +48,20 @@ function setupVoiceRecognition() {
 
     recognition.onend = () => {
         isListening = false;
+        
+        // If we're not paused, create a new recognition instance
+        if (!isPaused) {
+            setTimeout(setupVoiceRecognition, 100);
+        }
     };
 
     // Start recognition
-    recognition.start();
+    try {
+        recognition.start();
+    } catch (e) {
+        console.log("Error starting recognition:", e);
+        setTimeout(setupVoiceRecognition, 500);
+    }
 }
 
 function handleVoiceCommand(text) {
@@ -87,7 +97,11 @@ function showPausePopup() {
     // Stop recognition while paused
     if (recognition) {
         isListening = false;
-        recognition.stop();
+        try {
+            recognition.stop();
+        } catch (e) {
+            console.log("Error stopping recognition:", e);
+        }
     }
 
     clearInterval(timer);
@@ -103,6 +117,8 @@ function showPausePopup() {
         pauseScreen.remove();
         isPaused = false;
         startTimer();
+        // Create a new recognition instance when resuming
+        setTimeout(setupVoiceRecognition, 300);
     });
     
     restartBtn.addEventListener('click', () => {
@@ -110,7 +126,8 @@ function showPausePopup() {
             pauseScreen.remove();
             isPaused = false;
             restartGame();
-            
+            // Create a new recognition instance when restarting
+            setTimeout(setupVoiceRecognition, 300);
         }
     });
     

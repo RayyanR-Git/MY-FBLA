@@ -61,50 +61,12 @@ function setupVoiceRecognition() {
     }
 }
 
-// Add a function to stop recognition when needed
-function stopVoiceRecognition() {
-    if (recognition) {
-        isListening = false;
-        try {
-            recognition.stop();
-        } catch (error) {
-            console.error('Error stopping recognition:', error);
-        }
-    }
-}
-
 function handleVoiceCommand(text) {
     if (isPaused) return;
     
     if (text.includes('stop')) {
         showPausePopup();
     }
-}
-
-// Handle voice recognition errors
-function handleVoiceError(error) {
-    let message = 'An error occurred with voice recognition.';
-    
-    switch (error) {
-        case 'not-allowed':
-            message = 'Please allow microphone access to use voice commands.';
-            break;
-        case 'no-speech':
-            message = 'No speech was detected. Please try again.';
-            break;
-        case 'network':
-            message = 'Network error occurred. Please check your connection.';
-            break;
-        default:
-            message = `Voice recognition error: ${error}`;
-    }
-    
-    showAlert(message);
-}
-
-// Show browser support alert
-function showBrowserSupportAlert() {
-    showAlert('Voice recognition is only supported in Chrome and Edge browsers. Please switch browsers to use voice commands.');
 }
 
 // Generic alert function
@@ -129,6 +91,7 @@ function showAlert(message) {
 function showPausePopup() {
     if (isPaused) return; // Don't show if already paused
     isPaused = true;
+    setupVoiceRecognition()
 
     const pauseScreen = document.createElement('div');
     pauseScreen.className = 'pause-screen';

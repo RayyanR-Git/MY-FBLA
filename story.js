@@ -19,121 +19,39 @@ const MAX_RESTART_ATTEMPTS = 5;
 let lastRecognitionTime = 0;
 
 async function setupVoiceRecognition() {
-    try {
-        // Check for Chrome's implementation
-        if (!('webkitSpeechRecognition' in window)) {
-            throw new Error('Browser does not support speech recognition');
-        }
-
-        // Create a new recognition instance
-        recognition = new webkitSpeechRecognition();
-        
-        // Settings optimized for Chrome OS
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
-
-        recognition.onresult = (event) => {
-            // Reset restart attempts on successful results
-            recognitionRestartAttempts = 0;
-            lastRecognitionTime = Date.now();
-            
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                const transcript = event.results[i][0].transcript.toLowerCase().trim();
-                console.log('Recognized:', transcript);
-                
-                if (transcript.includes("stop")) {
-                    console.log('Stop command detected!');
-                    showPausePopup();
-                    break;
-                }
-            }
-        };
-
-        recognition.onstart = () => {
-            isListening = true;
-            console.log('Recognition started');
-            showAlert('Voice commands enabled (say "stop" to pause)');
-            lastRecognitionTime = Date.now();
-            
-            // Set up automatic restart heartbeat for managed Chromebooks
-            setupRecognitionHeartbeat();
-        };
-
-        recognition.onend = () => {
-            console.log('Recognition ended');
-            isListening = false;
-            
-            // Only attempt auto-restart if not paused and not too many attempts
-            if (!isPaused && recognitionRestartAttempts < MAX_RESTART_ATTEMPTS) {
-                recognitionRestartAttempts++;
-                console.log(`Attempting to restart recognition (attempt ${recognitionRestartAttempts})`);
-                
-                // Wait a moment before restarting
-                setTimeout(() => {
-                    try {
-                        recognition.start();
-                    } catch (error) {
-                        console.error('Error restarting recognition:', error);
-                        showAlert('Voice commands disconnected. Click anywhere to reconnect.');
-                        
-                        // Add click listener to try again
-                        document.body.addEventListener('click', () => {
-                            recognitionRestartAttempts = 0;
-                            setupVoiceRecognition();
-                        }, { once: true });
-                    }
-                }, 1000);
-            } else if (recognitionRestartAttempts >= MAX_RESTART_ATTEMPTS) {
-                console.warn('Maximum restart attempts reached. Requiring user interaction.');
-                showAlert('Voice commands disconnected. Click anywhere to reconnect.');
-                
-                // Add click listener to try again
-                document.body.addEventListener('click', () => {
-                    recognitionRestartAttempts = 0;
-                    setupVoiceRecognition();
-                }, { once: true });
-            }
-        };
-
-        recognition.onerror = (event) => {
-            console.error('Recognition error:', event.error);
-            isListening = false;
-            
-            if (event.error === 'not-allowed') {
-                showAlert('Click anywhere to enable voice commands');
-                // Add click listener to try again
-                document.body.addEventListener('click', () => {
-                    recognitionRestartAttempts = 0;
-                    setupVoiceRecognition();
-                }, { once: true });
-            } else if (event.error === 'network') {
-                // For network errors, try again with backoff
-                setTimeout(() => {
-                    if (!isPaused) {
-                        try {
-                            recognition.start();
-                        } catch (error) {
-                            console.error('Error restarting after network error:', error);
-                        }
-                    }
-                }, 2000);
-            }
-        };
-
-        // Start recognition
-        recognition.start();
-
-    } catch (error) {
-        console.error('Setup error:', error);
-        showAlert('Could not start voice recognition. Click to try again.');
-        
-        // Add click listener to try again
-        document.body.addEventListener('click', () => {
-            recognitionRestartAttempts = 0;
-            setupVoiceRecognition();
-        }, { once: true });
+    // Check for Chrome's implementation
+    if (!('webkitSpeechRecognition' in window)) {
+        return;
     }
+
+    // Create a new recognition instance
+    recognition = new webkitSpeechRecognition();
+    
+    // Basic settings
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript.toLowerCase().trim();
+        console.log('Recognized:', transcript);
+        
+        if (transcript === "stop") {
+            showPausePopup();
+        }
+    };
+
+    recognition.onstart = () => {
+        isListening = true;
+        showAlert('Voice commands enabled (say "stop" to pause)');
+    };
+
+    recognition.onend = () => {
+        isListening = false;
+    };
+
+    // Start recognition
+    recognition.start();
 }
 
 // Add a heartbeat function to monitor and restart recognition if needed
@@ -200,19 +118,10 @@ function showPausePopup() {
     if (isPaused) return;
     isPaused = true;
     
-    // Clear heartbeat when paused
-    if (window.recognitionHeartbeat) {
-        clearInterval(window.recognitionHeartbeat);
-    }
-    
     // Stop recognition while paused
     if (recognition) {
         isListening = false;
-        try {
-            recognition.stop();
-        } catch (error) {
-            console.error('Error stopping recognition:', error);
-        }
+        recognition.stop();
     }
 
     clearInterval(timer);
@@ -228,22 +137,7 @@ function showPausePopup() {
         pauseScreen.remove();
         isPaused = false;
         startTimer();
-        
-        // Reset attempts counter when user manually resumes
-        recognitionRestartAttempts = 0;
-        
-        // Show message to enable voice commands
-        showAlert('Click anywhere to enable voice commands');
-        
-        // Wait for user click to restart recognition
-        document.body.addEventListener('click', () => {
-            try {
-                recognition.start();
-            } catch (error) {
-                console.error('Error starting recognition:', error);
-                setupVoiceRecognition();
-            }
-        }, { once: true });
+        setupVoiceRecognition();
     });
     
     restartBtn.addEventListener('click', () => {
@@ -251,17 +145,7 @@ function showPausePopup() {
             pauseScreen.remove();
             isPaused = false;
             restartGame();
-            
-            // Reset attempts counter when user manually restarts
-            recognitionRestartAttempts = 0;
-            
-            // Show message to enable voice commands
-            showAlert('Click anywhere to enable voice commands');
-            
-            // Wait for user click to restart recognition
-            document.body.addEventListener('click', () => {
-                setupVoiceRecognition();
-            }, { once: true });
+            setupVoiceRecognition();
         }
     });
     
@@ -882,3 +766,8 @@ window.addEventListener('beforeunload', () => {
         recognition.stop();
     }
 });
+
+// Start voice recognition when page loads
+window.onload = function() {
+    setupVoiceRecognition();
+};

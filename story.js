@@ -11,12 +11,25 @@ let isPaused = false;
 // Add Web Speech API setup
 let recognition;
 let isListening = false;
+let micPermissionGranted = false;
 
-function setupVoiceRecognition() {
+async function setupVoiceRecognition() {
     try {
         // Check for Chrome's implementation
         if (!('webkitSpeechRecognition' in window)) {
             throw new Error('Browser does not support speech recognition');
+        }
+
+        // Request microphone permission once if not already granted
+        if (!micPermissionGranted) {
+            try {
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+                micPermissionGranted = true;
+            } catch (error) {
+                console.error('Microphone permission denied:', error);
+                showAlert('Please allow microphone access to use voice commands');
+                return;
+            }
         }
 
         // Create a new recognition instance
@@ -36,7 +49,13 @@ function setupVoiceRecognition() {
             
             // Restart recognition
             if (!isPaused) {
-                setTimeout(() => recognition.start(), 100);
+                setTimeout(() => {
+                    try {
+                        recognition.start();
+                    } catch (error) {
+                        console.error('Error restarting recognition:', error);
+                    }
+                }, 100);
             }
         };
 
@@ -49,14 +68,26 @@ function setupVoiceRecognition() {
             console.log('Recognition ended');
             // Restart if we should be listening
             if (isListening && !isPaused) {
-                setTimeout(() => recognition.start(), 100);
+                setTimeout(() => {
+                    try {
+                        recognition.start();
+                    } catch (error) {
+                        console.error('Error restarting recognition:', error);
+                    }
+                }, 100);
             }
         };
 
         recognition.onerror = (event) => {
             console.error('Recognition error:', event.error);
-            if (isListening && !isPaused) {
-                setTimeout(() => recognition.start(), 1000);
+            if (isListening && !isPaused && micPermissionGranted) {
+                setTimeout(() => {
+                    try {
+                        recognition.start();
+                    } catch (error) {
+                        console.error('Error restarting recognition:', error);
+                    }
+                }, 1000);
             }
         };
 

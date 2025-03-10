@@ -18,7 +18,7 @@ let recognitionRestartAttempts = 0;
 const MAX_RESTART_ATTEMPTS = 5;
 let lastRecognitionTime = 0;
 
-async function setupVoiceRecognition() {
+function setupVoiceRecognition() {
     // Check for Chrome's implementation
     if (!('webkitSpeechRecognition' in window)) {
         return;
@@ -52,40 +52,6 @@ async function setupVoiceRecognition() {
 
     // Start recognition
     recognition.start();
-}
-
-// Add a heartbeat function to monitor and restart recognition if needed
-function setupRecognitionHeartbeat() {
-    const HEARTBEAT_INTERVAL = 5000; // Check every 5 seconds
-    const TIMEOUT_THRESHOLD = 15000; // Consider stalled after 15 seconds without activity
-    
-    // Clear any existing heartbeat
-    if (window.recognitionHeartbeat) {
-        clearInterval(window.recognitionHeartbeat);
-    }
-    
-    window.recognitionHeartbeat = setInterval(() => {
-        if (isPaused) return;
-        
-        const currentTime = Date.now();
-        const timeSinceLastActivity = currentTime - lastRecognitionTime;
-        
-        // If we haven't had recognition activity in too long, restart
-        if (isListening && timeSinceLastActivity > TIMEOUT_THRESHOLD) {
-            console.warn('Recognition appears stalled. Restarting...');
-            try {
-                // Force stop then restart
-                recognition.stop();
-                setTimeout(() => {
-                    if (!isPaused) {
-                        recognition.start();
-                    }
-                }, 1000);
-            } catch (error) {
-                console.error('Error during heartbeat restart:', error);
-            }
-        }
-    }, HEARTBEAT_INTERVAL);
 }
 
 function handleVoiceCommand(text) {
@@ -137,7 +103,6 @@ function showPausePopup() {
         pauseScreen.remove();
         isPaused = false;
         startTimer();
-        setupVoiceRecognition();
     });
     
     restartBtn.addEventListener('click', () => {
@@ -145,7 +110,7 @@ function showPausePopup() {
             pauseScreen.remove();
             isPaused = false;
             restartGame();
-            setupVoiceRecognition();
+            
         }
     });
     
@@ -766,8 +731,3 @@ window.addEventListener('beforeunload', () => {
         recognition.stop();
     }
 });
-
-// Start voice recognition when page loads
-window.onload = function() {
-    setupVoiceRecognition();
-};

@@ -12,52 +12,64 @@ let isPaused = false;
 let recognition;
 let isListening = false;
 
-function setupVoiceRecognition() {
+async function setupVoiceRecognition() {
     try {
-        // Check specifically for Chrome
-        if (!('webkitSpeechRecognition' in window)) {
-            throw new Error('Browser does not support speech recognition');
+        // Check for AudioContext support
+        if (!window.AudioContext && !window.webkitAudioContext) {
+            throw new Error('AudioContext not supported');
         }
 
-        // Initialize speech recognition optimized for Chrome
-        recognition = new webkitSpeechRecognition(); // Use webkit version specifically
-        recognition.continuous = true; // Changed to false for better Chrome performance
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
-        recognition.maxAlternatives = 2; // Increase alternatives for better accuracy
+        console.log('Starting Vosk setup...');
 
-        recognition.onresult = (event) => {
-            const results = event.results[0];
-            // Check all alternatives for "stop"
-            for (let i = 0; i < results.length; i++) {
-                const transcript = results[i].transcript.toLowerCase().trim();
-                if (transcript == "stop") {
+        // Initialize Vosk
+        vosk = await Vosk.createModel('models/vosk-model-small-en-us-0.15');
+        console.log('Vosk model loaded');
+        
+        voskRecognizer = new vosk.KaldiRecognizer();
+        console.log('Recognizer created');
+
+        // Get microphone access
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                sampleRate: 16000
+            }
+        });
+        console.log('Microphone access granted');
+
+        // Setup audio processing
+        audioContext = new (window.AudioContext || window.webkitAudioContext)({
+            sampleRate: 16000
+        });
+        
+        const source = audioContext.createMediaStreamSource(mediaStream);
+        processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+        processor.onaudioprocess = (e) => {
+            if (!isListening || isPaused) return;
+            
+            const data = e.inputBuffer.getChannelData(0);
+            if (voskRecognizer.acceptWaveform(data)) {
+                const result = voskRecognizer.result();
+                console.log('Recognized:', result.text);
+                if (result.text && result.text.toLowerCase().includes('stop')) {
+                    console.log('Stop command detected!');
                     showPausePopup();
-                    break;
                 }
             }
-            // Restart recognition immediately after processing result
-            recognition.start();
         };
 
-        recognition.onstart = () => {
-            isListening = true;
-            showAlert('Voice commands enabled (say "stop" to pause)');
-        };
+        source.connect(processor);
+        processor.connect(audioContext.destination);
 
-        recognition.onerror = (event) => {
-            console.error('Speech recognition error:', event.error);
-            // Restart after a short delay on error
-            setTimeout(() => {
-                if (isListening) recognition.start();
-            }, 1000);
-        };
-
-        recognition.start();
+        isListening = true;
+        console.log('Voice recognition setup complete');
+        showAlert('Voice commands enabled (say "stop" to pause)');
 
     } catch (error) {
         console.error('Voice recognition setup error:', error);
-        showAlert('Could not start voice recognition. Please check your microphone settings.');
+        handleVoiceError(error);
     }
 }
 

@@ -13,52 +13,42 @@ let recognition;
 let isListening = false;
 
 function setupVoiceRecognition() {
-    try {
-        // Check specifically for Chrome
-        if (!('webkitSpeechRecognition' in window)) {
-            throw new Error('Browser does not support speech recognition');
-        }
-
-        // Initialize speech recognition optimized for Chrome
-        recognition = new webkitSpeechRecognition(); // Use webkit version specifically
-        recognition.continuous = true; // Changed to false for better Chrome performance
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
-        recognition.maxAlternatives = 2; // Increase alternatives for better accuracy
-
-        recognition.onresult = (event) => {
-            const results = event.results[0];
-            // Check all alternatives for "stop"
-            for (let i = 0; i < results.length; i++) {
-                const transcript = results[i].transcript.toLowerCase().trim();
-                if (transcript == "stop") {
-                    showPausePopup();
-                    break;
-                }
-            }
-            // Restart recognition immediately after processing result
-            recognition.start();
-        };
-
-        recognition.onstart = () => {
-            isListening = true;
-            showAlert('Voice commands enabled (say "stop" to pause)');
-        };
-
-        recognition.onerror = (event) => {
-            console.error('Speech recognition error:', event.error);
-            // Restart after a short delay on error
-            setTimeout(() => {
-                if (isListening) recognition.start();
-            }, 1000);
-        };
-
-        recognition.start();
-
-    } catch (error) {
-        console.error('Voice recognition setup error:', error);
-        showAlert('Could not start voice recognition. Please check your microphone settings.');
+    // Check for Chrome's implementation
+    if (!('webkitSpeechRecognition' in window)) {
+        return;
     }
+
+    // Create a new recognition instance
+    recognition = new webkitSpeechRecognition();
+    
+    // Settings optimized for Chrome OS
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event) => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript.toLowerCase().trim();
+            console.log('Recognized:', transcript);
+            
+            if (transcript.includes("stop")) {
+                showPausePopup();
+                break;
+            }
+        }
+    };
+
+    recognition.onstart = () => {
+        isListening = true;
+        showAlert('Voice commands enabled (say "stop" to pause)');
+    };
+
+    recognition.onend = () => {
+        isListening = false;
+    };
+
+    // Start recognition
+    recognition.start();
 }
 
 function handleVoiceCommand(text) {
@@ -91,6 +81,13 @@ function showPausePopup() {
     if (isPaused) return;
     isPaused = true;
     
+    // Stop recognition while paused
+    if (recognition) {
+        isListening = false;
+        recognition.stop();
+    }
+
+    clearInterval(timer);
     const template = document.getElementById('pause-template');
     const pauseScreen = template.content.cloneNode(true).querySelector('.pause-screen');
     document.body.appendChild(pauseScreen);
@@ -103,17 +100,21 @@ function showPausePopup() {
         pauseScreen.remove();
         isPaused = false;
         startTimer();
-        isListening = true;
-        setupVoiceRecognition();
+        showAlert('Click anywhere to enable voice commands');
+        document.body.addEventListener('click', () => {
+            recognition.start();
+        }, { once: true });
     });
     
     restartBtn.addEventListener('click', () => {
         if (confirm('Are you sure you want to restart? All progress will be lost.')) {
             pauseScreen.remove();
             isPaused = false;
-            isListening = true;
-            setupVoiceRecognition();
             restartGame();
+            showAlert('Click anywhere to enable voice commands');
+            document.body.addEventListener('click', () => {
+                setupVoiceRecognition();
+            }, { once: true });
         }
     });
     
@@ -655,59 +656,12 @@ function restartGame() {
     updateDisplay(storyNodes.start);
 }
 // error handling and input validation
-window.onload = async function() {
-    try {
-        if (!storyNodes || !storyNodes.start) {
-            throw new Error('Game data not properly loaded');
-        }
-
-        // Add event listeners for menu and restart buttons
-        const menuBtn = document.getElementById('menu-btn');
-        const restartBtn = document.getElementById('restart-btn');
-
-        if (menuBtn) {
-            menuBtn.addEventListener('click', () => {
-                if (confirm('Return to menu? All progress will be lost.')) {
-                    window.location.href = 'index.html';
-                }
-            });
-        }
-
-        if (restartBtn) {
-            restartBtn.addEventListener('click', () => {
-                if (confirm('Are you sure you want to restart? All progress will be lost.')) {
-                    restartGame();
-                }
-            });
-        }
-
-        showAlert('Click anywhere to enable voice commands');
-
-        // Wait for user interaction before starting voice recognition
-        document.body.addEventListener('click', () => {
-            setupVoiceRecognition();
-        }, { once: true });
-
-        // Initialize the game
-        updateDisplay(storyNodes.start);
-
-    } catch (error) {
-        console.error('Error during initialization:', error);
-        handleError(error);
-        // Ensure game is still playable without voice recognition
-        updateDisplay(storyNodes.start);
-    }
+window.onload = function() {
+    showAlert('Click anywhere to enable voice commands');
+    document.body.addEventListener('click', () => {
+        setupVoiceRecognition();
+    }, { once: true });
 };
-
-function handleError(error) {
-    const template = document.getElementById('error-template');
-    const errorScreen = template.content.cloneNode(true).querySelector('.error-screen');
-    document.body.appendChild(errorScreen);
-    
-    errorScreen.querySelector('#returnMenuBtn').addEventListener('click', () => {
-        window.location.href = 'index.html';
-    });
-}
 
 // Function to handle ending popups
 function showEndingPopup(text) {

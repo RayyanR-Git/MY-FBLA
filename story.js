@@ -11,44 +11,77 @@ let isPaused = false;
 // Add Web Speech API setup
 let recognition;
 let isListening = false;
+let mediaStream = null;
 
-function setupVoiceRecognition() {
-    // Check for Chrome's implementation
-    if (!('webkitSpeechRecognition' in window)) {
-        return;
-    }
-
-    // Create a new recognition instance
-    recognition = new webkitSpeechRecognition();
-    
-    // Settings optimized for Chrome OS
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-
-    recognition.onresult = (event) => {
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript.toLowerCase().trim();
-            console.log('Recognized:', transcript);
-            
-            if (transcript.includes("stop")) {
-                showPausePopup();
-                break;
-            }
+async function setupVoiceRecognition() {
+    try {
+        // Check for Chrome's implementation
+        if (!('webkitSpeechRecognition' in window)) {
+            throw new Error('Browser does not support speech recognition');
         }
-    };
 
-    recognition.onstart = () => {
-        isListening = true;
-        showAlert('Voice commands enabled (say "stop" to pause)');
-    };
+        // Create a new recognition instance
+        recognition = new webkitSpeechRecognition();
+        
+        // Settings optimized for Chrome OS
+        recognition.continuous = true; // Changed to true
+        recognition.interimResults = true; // Changed to true
+        recognition.lang = 'en-US';
 
-    recognition.onend = () => {
-        isListening = false;
-    };
+        recognition.onresult = (event) => {
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript.toLowerCase().trim();
+                console.log('Recognized:', transcript);
+                
+                if (transcript.includes("stop")) {
+                    console.log('Stop command detected!');
+                    showPausePopup();
+                    break;
+                }
+            }
+        };
 
-    // Start recognition
-    recognition.start();
+        recognition.onstart = () => {
+            isListening = true;
+            console.log('Recognition started');
+            showAlert('Voice commands enabled (say "stop" to pause)');
+        };
+
+        recognition.onend = () => {
+            console.log('Recognition ended');
+            // Don't auto-restart, wait for user action
+            isListening = false;
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Recognition error:', event.error);
+            isListening = false;
+            
+            if (event.error === 'not-allowed') {
+                showAlert('Click anywhere to enable voice commands');
+                // Add click listener to try again
+                document.body.addEventListener('click', () => {
+                    try {
+                        recognition.start();
+                    } catch (error) {
+                        console.error('Error starting recognition:', error);
+                    }
+                }, { once: true });
+            }
+        };
+
+        // Start recognition
+        recognition.start();
+
+    } catch (error) {
+        console.error('Setup error:', error);
+        showAlert('Could not start voice recognition. Click to try again.');
+        
+        // Add click listener to try again
+        document.body.addEventListener('click', () => {
+            setupVoiceRecognition();
+        }, { once: true });
+    }
 }
 
 function handleVoiceCommand(text) {
@@ -84,7 +117,11 @@ function showPausePopup() {
     // Stop recognition while paused
     if (recognition) {
         isListening = false;
-        recognition.stop();
+        try {
+            recognition.stop();
+        } catch (error) {
+            console.error('Error stopping recognition:', error);
+        }
     }
 
     clearInterval(timer);
@@ -100,9 +137,18 @@ function showPausePopup() {
         pauseScreen.remove();
         isPaused = false;
         startTimer();
+        
+        // Show message to enable voice commands
         showAlert('Click anywhere to enable voice commands');
+        
+        // Wait for user click to restart recognition
         document.body.addEventListener('click', () => {
-            recognition.start();
+            try {
+                recognition.start();
+            } catch (error) {
+                console.error('Error starting recognition:', error);
+                setupVoiceRecognition();
+            }
         }, { once: true });
     });
     
@@ -111,7 +157,11 @@ function showPausePopup() {
             pauseScreen.remove();
             isPaused = false;
             restartGame();
+            
+            // Show message to enable voice commands
             showAlert('Click anywhere to enable voice commands');
+            
+            // Wait for user click to restart recognition
             document.body.addEventListener('click', () => {
                 setupVoiceRecognition();
             }, { once: true });
@@ -656,12 +706,59 @@ function restartGame() {
     updateDisplay(storyNodes.start);
 }
 // error handling and input validation
-window.onload = function() {
-    showAlert('Click anywhere to enable voice commands');
-    document.body.addEventListener('click', () => {
-        setupVoiceRecognition();
-    }, { once: true });
+window.onload = async function() {
+    try {
+        if (!storyNodes || !storyNodes.start) {
+            throw new Error('Game data not properly loaded');
+        }
+
+        // Add event listeners for menu and restart buttons
+        const menuBtn = document.getElementById('menu-btn');
+        const restartBtn = document.getElementById('restart-btn');
+
+        if (menuBtn) {
+            menuBtn.addEventListener('click', () => {
+                if (confirm('Return to menu? All progress will be lost.')) {
+                    window.location.href = 'index.html';
+                }
+            });
+        }
+
+        if (restartBtn) {
+            restartBtn.addEventListener('click', () => {
+                if (confirm('Are you sure you want to restart? All progress will be lost.')) {
+                    restartGame();
+                }
+            });
+        }
+
+        showAlert('Click anywhere to enable voice commands');
+
+        // Wait for user interaction before starting voice recognition
+        document.body.addEventListener('click', () => {
+            setupVoiceRecognition();
+        }, { once: true });
+
+        // Initialize the game
+        updateDisplay(storyNodes.start);
+
+    } catch (error) {
+        console.error('Error during initialization:', error);
+        handleError(error);
+        // Ensure game is still playable without voice recognition
+        updateDisplay(storyNodes.start);
+    }
 };
+
+function handleError(error) {
+    const template = document.getElementById('error-template');
+    const errorScreen = template.content.cloneNode(true).querySelector('.error-screen');
+    document.body.appendChild(errorScreen);
+    
+    errorScreen.querySelector('#returnMenuBtn').addEventListener('click', () => {
+        window.location.href = 'index.html';
+    });
+}
 
 // Function to handle ending popups
 function showEndingPopup(text) {
@@ -678,3 +775,13 @@ function selectChoice(choice) {
         displayStoryNode(nextNode);
     }
 }
+
+// Clean up function for when leaving the page
+window.addEventListener('beforeunload', () => {
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+    }
+    if (recognition) {
+        recognition.stop();
+    }
+});

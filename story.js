@@ -20,80 +20,72 @@ async function setupVoiceRecognition() {
             throw new Error('Browser does not support speech recognition');
         }
 
-        // Request microphone permission once if not already granted
-        if (!micPermissionGranted) {
-            try {
-                await navigator.mediaDevices.getUserMedia({ audio: true });
-                micPermissionGranted = true;
-            } catch (error) {
-                console.error('Microphone permission denied:', error);
-                showAlert('Please allow microphone access to use voice commands');
-                return;
-            }
+        // Only create a new recognition instance if one doesn't exist
+        if (!recognition) {
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript.toLowerCase().trim();
+                console.log('Recognized:', transcript);
+                
+                if (transcript === "stop") {
+                    console.log('Stop command detected!');
+                    showPausePopup();
+                }
+                
+                // Restart recognition
+                if (!isPaused) {
+                    setTimeout(() => {
+                        try {
+                            recognition.start();
+                        } catch (error) {
+                            console.error('Error restarting recognition:', error);
+                        }
+                    }, 100);
+                }
+            };
+
+            recognition.onstart = () => {
+                isListening = true;
+                console.log('Recognition started');
+            };
+
+            recognition.onend = () => {
+                console.log('Recognition ended');
+                // Restart if we should be listening
+                if (isListening && !isPaused) {
+                    setTimeout(() => {
+                        try {
+                            recognition.start();
+                        } catch (error) {
+                            console.error('Error restarting recognition:', error);
+                        }
+                    }, 100);
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Recognition error:', event.error);
+                if (isListening && !isPaused) {
+                    setTimeout(() => {
+                        try {
+                            recognition.start();
+                        } catch (error) {
+                            console.error('Error restarting recognition:', error);
+                        }
+                    }, 1000);
+                }
+            };
         }
 
-        // Create a new recognition instance
-        recognition = new webkitSpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
-
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript.toLowerCase().trim();
-            console.log('Recognized:', transcript);
-            
-            if (transcript === "stop") {
-                console.log('Stop command detected!');
-                showPausePopup();
-            }
-            
-            // Restart recognition
-            if (!isPaused) {
-                setTimeout(() => {
-                    try {
-                        recognition.start();
-                    } catch (error) {
-                        console.error('Error restarting recognition:', error);
-                    }
-                }, 100);
-            }
-        };
-
-        recognition.onstart = () => {
-            isListening = true;
-            console.log('Recognition started');
-        };
-
-        recognition.onend = () => {
-            console.log('Recognition ended');
-            // Restart if we should be listening
-            if (isListening && !isPaused) {
-                setTimeout(() => {
-                    try {
-                        recognition.start();
-                    } catch (error) {
-                        console.error('Error restarting recognition:', error);
-                    }
-                }, 100);
-            }
-        };
-
-        recognition.onerror = (event) => {
-            console.error('Recognition error:', event.error);
-            if (isListening && !isPaused && micPermissionGranted) {
-                setTimeout(() => {
-                    try {
-                        recognition.start();
-                    } catch (error) {
-                        console.error('Error restarting recognition:', error);
-                    }
-                }, 1000);
-            }
-        };
-
-        // Start recognition
-        recognition.start();
-        showAlert('Voice commands enabled (say "stop" to pause)');
+        // Start recognition if it's not already running
+        if (!isListening) {
+            recognition.start();
+            showAlert('Voice commands enabled (say "stop" to pause)');
+        }
 
     } catch (error) {
         console.error('Setup error:', error);
@@ -154,9 +146,14 @@ function showPausePopup() {
         pauseScreen.remove();
         isPaused = false;
         startTimer();
-        // Restart voice recognition
+        // Resume voice recognition
         isListening = true;
-        setupVoiceRecognition();
+        try {
+            recognition.start();
+        } catch (error) {
+            console.error('Error resuming recognition:', error);
+            setupVoiceRecognition();
+        }
     });
     
     restartBtn.addEventListener('click', () => {
@@ -164,7 +161,12 @@ function showPausePopup() {
             pauseScreen.remove();
             isPaused = false;
             isListening = true;
-            setupVoiceRecognition();
+            try {
+                recognition.start();
+            } catch (error) {
+                console.error('Error resuming recognition:', error);
+                setupVoiceRecognition();
+            }
             restartGame();
         }
     });

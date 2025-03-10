@@ -609,4 +609,65 @@ body {
     from { transform: translateY(-20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
 }
+
+/* Add these styles for screens and animations */
+.time-up-screen,
+.ending-screen,
+.error-screen {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.time-up-content,
+.ending-content,
+.error-content {
+    background: var(--primary);
+    padding: 2.5rem;
+    border-radius: 12px;
+    box-shadow: 0 0 30px var(--glow-color);
+    text-align: center;
+    max-width: 500px;
+    width: 90%;
+    animation: slideIn 0.3s ease;
+}
+
+.ending-screen.fade-out {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.ending-screen.fade-in {
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+/* Add any missing button styles */
+.time-up-buttons button,
+.ending-buttons button,
+.error-buttons button {
+    padding: 0.8rem 1.5rem;
+    font-size: 1rem;
+    background: transparent;
+    border: 1px solid var(--text-muted);
+    color: var(--text);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Open Sans', sans-serif;
+}
+
+.time-up-buttons button:hover,
+.ending-buttons button:hover,
+.error-buttons button:hover {
+    background: var(--primary-light);
+    border-color: var(--text);
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px var(--glow-spread),
+                0 0 5px var(--glow-color);
+}
   

@@ -17,6 +17,78 @@
         <div id="choices"></div>
         <button id="restart-btn">Restart</button>
     </div>
+
+    <!-- Timer Template -->
+    <template id="timer-template">
+        <div class="timer-container">
+            <div class="timer-label">Time Remaining</div>
+            <div class="timer"></div>
+        </div>
+        <div class="timer-bar-container">
+            <div class="timer-bar"></div>
+        </div>
+    </template>
+
+    <!-- Pause Screen Template -->
+    <template id="pause-template">
+        <div class="pause-screen">
+            <div class="pause-content">
+                <h2 class="pause-title">Game Paused</h2>
+                <div class="pause-buttons">
+                    <button id="resumeBtn">Resume</button>
+                    <button id="restartBtn">Restart</button>
+                    <button id="menuBtn">Return to Menu</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Time Up Screen Template -->
+    <template id="time-up-template">
+        <div class="time-up-screen">
+            <div class="time-up-content">
+                <h2 class="ending-title">Time's Up!</h2>
+                <p class="ending-text">You took too long to make a choice.</p>
+                <div class="time-up-buttons">
+                    <button id="tryAgainBtn">Try Again</button>
+                    <button id="returnMenuBtn">Return to Menu</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Ending Screen Template -->
+    <template id="ending-template">
+        <div class="ending-screen fade-out">
+            <div class="ending-content">
+                <h2 class="ending-title">Game Over</h2>
+                <p class="ending-text"></p>
+                <div class="ending-buttons">
+                    <button id="tryAgainBtn">Try Again</button>
+                    <button id="returnMenuBtn">Return to Menu</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Error Screen Template -->
+    <template id="error-template">
+        <div class="error-screen">
+            <div class="error-content">
+                <h2 class="ending-title">Error</h2>
+                <p class="ending-text">Something went wrong.</p>
+                <div class="error-buttons">
+                    <button id="returnMenuBtn">Return to Menu</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Alert Template -->
+    <template id="alert-template">
+        <div class="alert-message"></div>
+    </template>
+
     <script src="story.js"></script>
 </body>
 </html> 

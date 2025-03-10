@@ -76,10 +76,9 @@ function showAlert(message) {
         existingAlert.remove();
     }
 
-    const alert = document.createElement('div');
-    alert.className = 'alert-message';
+    const template = document.getElementById('alert-template');
+    const alert = template.content.cloneNode(true).querySelector('.alert-message');
     alert.textContent = message;
-    
     document.body.appendChild(alert);
 
     setTimeout(() => {
@@ -89,44 +88,31 @@ function showAlert(message) {
 
 // Add pause popup
 function showPausePopup() {
-    if (isPaused) return; // Don't show if already paused
+    if (isPaused) return;
     isPaused = true;
-    setupVoiceRecognition()
-
-    const pauseScreen = document.createElement('div');
-    pauseScreen.className = 'pause-screen';
     
-    pauseScreen.innerHTML = `
-        <div class="pause-content">
-            <h2 class="pause-title">Game Paused</h2>
-            <div class="pause-buttons">
-                <button id="resumeBtn">Resume</button>
-                <button id="restartBtn">Restart</button>
-                <button id="menuBtn">Return to Menu</button>
-            </div>
-        </div>
-    `;
-    
+    const template = document.getElementById('pause-template');
+    const pauseScreen = template.content.cloneNode(true).querySelector('.pause-screen');
     document.body.appendChild(pauseScreen);
     
-    // Stop the timer if it's running
-    clearInterval(timer);
-
-    // Add button event listeners
     const resumeBtn = pauseScreen.querySelector('#resumeBtn');
     const restartBtn = pauseScreen.querySelector('#restartBtn');
     const menuBtn = pauseScreen.querySelector('#menuBtn');
     
     resumeBtn.addEventListener('click', () => {
         pauseScreen.remove();
-        isPaused = false; // Reset pause flag
+        isPaused = false;
         startTimer();
+        isListening = true;
+        setupVoiceRecognition();
     });
     
     restartBtn.addEventListener('click', () => {
         if (confirm('Are you sure you want to restart? All progress will be lost.')) {
             pauseScreen.remove();
-            isPaused = false; // Reset pause flag
+            isPaused = false;
+            isListening = true;
+            setupVoiceRecognition();
             restartGame();
         }
     });
@@ -137,74 +123,6 @@ function showPausePopup() {
         }
     });
 }
-
-// Add CSS for the pause screen
-const style = document.createElement('style');
-style.textContent = ` 
-    .pause-screen {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.9);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-        animation: fadeIn 0.3s ease;
-    }
-
-    .pause-content {
-        background: var(--primary);
-        padding: 2.5rem;
-        border-radius: 12px;
-        box-shadow: 0 0 30px var(--glow-color);
-        text-align: center;
-        animation: slideIn 0.3s ease;
-    }
-
-    .pause-title {
-        font-family: 'Cinzel', serif;
-        font-size: 2.2rem;
-        margin-bottom: 2rem;
-        color: var(--text);
-    }
-
-    .pause-buttons {
-        display: flex;
-        gap: 1rem;
-        justify-content: center;
-    }
-
-    .pause-buttons button {
-        padding: 0.8rem 1.5rem;
-        font-size: 1rem;
-        background: transparent;
-        border: 1px solid var(--text-muted);
-        color: var(--text);
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        font-family: 'Open Sans', sans-serif;
-    }
-
-    .pause-buttons button:hover {
-        background: var(--primary-light);
-        border-color: var(--text);
-        transform: translateY(-2px);
-        box-shadow: 0 0 15px var(--glow-spread),
-                    0 0 5px var(--glow-color);
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-
-    @keyframes slideIn {
-        from { transform: translateY(-20px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-    }
-`;
-document.head.appendChild(style);
 
 // Story nodes
 const storyNodes = {
@@ -575,38 +493,28 @@ const storyNodes = {
 // Updates the timer display as time goes
 function updateTimerDisplay(seconds) {
     let timerContainer = document.querySelector('.timer-container');
-    if (!timerContainer) {
-        timerContainer = document.createElement('div');
-        timerContainer.className = 'timer-container';
-        timerContainer.innerHTML = `
-            <div class="timer-label">Time Remaining</div>
-            <div class="timer">${seconds}</div>
-        `;
-        document.body.appendChild(timerContainer);
-    } else {
-        const timerDisplay = timerContainer.querySelector('.timer');
-        if (timerDisplay) {
-            timerDisplay.textContent = seconds;
-        }
-    }
-
     let timerBarContainer = document.querySelector('.timer-bar-container');
-    if (!timerBarContainer) {
-        timerBarContainer = document.createElement('div');
-        timerBarContainer.className = 'timer-bar-container';
-        timerBarContainer.innerHTML = '<div class="timer-bar"></div>';
+    
+    if (!timerContainer) {
+        const template = document.getElementById('timer-template');
+        const timerElements = template.content.cloneNode(true);
+        timerContainer = timerElements.querySelector('.timer-container');
+        timerBarContainer = timerElements.querySelector('.timer-bar-container');
+        document.body.appendChild(timerContainer);
         document.body.appendChild(timerBarContainer);
     }
-
+    
+    const timerDisplay = timerContainer.querySelector('.timer');
     const timerBar = timerBarContainer.querySelector('.timer-bar');
-    if (timerBar) {
-        const percentageLeft = (seconds / CHOICE_TIME) * 100;
-        timerBar.style.width = `${percentageLeft}%`;
-        if (seconds <= 5) {
-            timerBar.classList.add('urgent');
-        } else {
-            timerBar.classList.remove('urgent');
-        }
+    
+    timerDisplay.textContent = seconds;
+    const percentageLeft = (seconds / CHOICE_TIME) * 100;
+    timerBar.style.width = `${percentageLeft}%`;
+    
+    if (seconds <= 5) {
+        timerBar.classList.add('urgent');
+    } else {
+        timerBar.classList.remove('urgent');
     }
 }
 
@@ -639,66 +547,37 @@ function startTimer() {
 }
 // Popup when time is over
 function showTimeUpScreen() {
-    const timeUpScreen = document.createElement('div');
-    timeUpScreen.className = 'time-up-screen';
-    
-    timeUpScreen.innerHTML = `
-        <div class="time-up-content">
-            <h2 class="ending-title">Time's Up!</h2>
-            <p class="ending-text">You took too long to make a choice.</p>
-            <div class="time-up-buttons">
-                <button id="tryAgainBtn">Try Again</button>
-                <button id="returnMenuBtn">Return to Menu</button>
-            </div>
-        </div>
-    `;
-    
+    const template = document.getElementById('time-up-template');
+    const timeUpScreen = template.content.cloneNode(true).querySelector('.time-up-screen');
     document.body.appendChild(timeUpScreen);
     
-    const tryAgainBtn = timeUpScreen.querySelector('#tryAgainBtn');
-    const returnMenuBtn = timeUpScreen.querySelector('#returnMenuBtn');
-    
-    tryAgainBtn.addEventListener('click', () => {
+    timeUpScreen.querySelector('#tryAgainBtn').addEventListener('click', () => {
         timeUpScreen.remove();
         restartGame();
     });
     
-    returnMenuBtn.addEventListener('click', () => {
+    timeUpScreen.querySelector('#returnMenuBtn').addEventListener('click', () => {
         window.location.href = 'index.html';
     });
 }
 
 function showEndingScreen(text) {
-    const endingScreen = document.createElement('div');
-    endingScreen.className = 'ending-screen fade-out';
-    
-    endingScreen.innerHTML = `
-        <div class="ending-content">
-            <h2 class="ending-title">Game Over</h2>
-            <p class="ending-text">${text}</p>
-            <div class="ending-buttons">
-                <button id="tryAgainBtn">Try Again</button>
-                <button id="returnMenuBtn">Return to Menu</button>
-            </div>
-        </div>
-    `;
+    const template = document.getElementById('ending-template');
+    const endingScreen = template.content.cloneNode(true).querySelector('.ending-screen');
+    endingScreen.querySelector('.ending-text').textContent = text;
     
     document.body.appendChild(endingScreen);
     
-    const tryAgainBtn = endingScreen.querySelector('#tryAgainBtn');
-    const returnMenuBtn = endingScreen.querySelector('#returnMenuBtn');
-    
-    tryAgainBtn.addEventListener('click', () => {
+    endingScreen.querySelector('#tryAgainBtn').addEventListener('click', () => {
         endingScreen.remove();
         restartGame();
     });
     
-    returnMenuBtn.addEventListener('click', () => {
+    endingScreen.querySelector('#returnMenuBtn').addEventListener('click', () => {
         window.location.href = 'index.html';
     });
     
     endingScreen.offsetHeight;
-    
     setTimeout(() => {
         endingScreen.classList.remove('fade-out');
         endingScreen.classList.add('fade-in');
@@ -821,23 +700,11 @@ window.onload = async function() {
 };
 
 function handleError(error) {
-    const errorScreen = document.createElement('div');
-    errorScreen.className = 'error-screen';
-    
-    errorScreen.innerHTML = `
-        <div class="error-content">
-            <h2 class="ending-title">Error</h2>
-            <p class="ending-text">Something went wrong.</p>
-            <div class="error-buttons">
-                <button id="returnMenuBtn">Return to Menu</button>
-            </div>
-        </div>
-    `;
-    
+    const template = document.getElementById('error-template');
+    const errorScreen = template.content.cloneNode(true).querySelector('.error-screen');
     document.body.appendChild(errorScreen);
     
-    const returnMenuBtn = errorScreen.querySelector('#returnMenuBtn');
-    returnMenuBtn.addEventListener('click', () => {
+    errorScreen.querySelector('#returnMenuBtn').addEventListener('click', () => {
         window.location.href = 'index.html';
     });
 }

@@ -12,64 +12,61 @@ let isPaused = false;
 let recognition;
 let isListening = false;
 
-async function setupVoiceRecognition() {
+function setupVoiceRecognition() {
     try {
-        // Check for AudioContext support
-        if (!window.AudioContext && !window.webkitAudioContext) {
-            throw new Error('AudioContext not supported');
+        // Check for Chrome's implementation
+        if (!('webkitSpeechRecognition' in window)) {
+            throw new Error('Browser does not support speech recognition');
         }
 
-        console.log('Starting Vosk setup...');
+        // Create a new recognition instance
+        recognition = new webkitSpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
 
-        // Initialize Vosk
-        vosk = await Vosk.createModel('models/vosk-model-small-en-us-0.15');
-        console.log('Vosk model loaded');
-        
-        voskRecognizer = new vosk.KaldiRecognizer();
-        console.log('Recognizer created');
-
-        // Get microphone access
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                sampleRate: 16000
-            }
-        });
-        console.log('Microphone access granted');
-
-        // Setup audio processing
-        audioContext = new (window.AudioContext || window.webkitAudioContext)({
-            sampleRate: 16000
-        });
-        
-        const source = audioContext.createMediaStreamSource(mediaStream);
-        processor = audioContext.createScriptProcessor(4096, 1, 1);
-
-        processor.onaudioprocess = (e) => {
-            if (!isListening || isPaused) return;
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript.toLowerCase().trim();
+            console.log('Recognized:', transcript);
             
-            const data = e.inputBuffer.getChannelData(0);
-            if (voskRecognizer.acceptWaveform(data)) {
-                const result = voskRecognizer.result();
-                console.log('Recognized:', result.text);
-                if (result.text && result.text.toLowerCase().includes('stop')) {
-                    console.log('Stop command detected!');
-                    showPausePopup();
-                }
+            if (transcript === "stop") {
+                console.log('Stop command detected!');
+                showPausePopup();
+            }
+            
+            // Restart recognition
+            if (!isPaused) {
+                setTimeout(() => recognition.start(), 100);
             }
         };
 
-        source.connect(processor);
-        processor.connect(audioContext.destination);
+        recognition.onstart = () => {
+            isListening = true;
+            console.log('Recognition started');
+        };
 
-        isListening = true;
-        console.log('Voice recognition setup complete');
+        recognition.onend = () => {
+            console.log('Recognition ended');
+            // Restart if we should be listening
+            if (isListening && !isPaused) {
+                setTimeout(() => recognition.start(), 100);
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Recognition error:', event.error);
+            if (isListening && !isPaused) {
+                setTimeout(() => recognition.start(), 1000);
+            }
+        };
+
+        // Start recognition
+        recognition.start();
         showAlert('Voice commands enabled (say "stop" to pause)');
 
     } catch (error) {
-        console.error('Voice recognition setup error:', error);
-        handleVoiceError(error);
+        console.error('Setup error:', error);
+        showAlert('Could not start voice recognition');
     }
 }
 
@@ -103,6 +100,17 @@ function showPausePopup() {
     if (isPaused) return;
     isPaused = true;
     
+    // Stop recognition while paused
+    if (recognition) {
+        isListening = false;
+        try {
+            recognition.stop();
+        } catch (error) {
+            console.error('Error stopping recognition:', error);
+        }
+    }
+
+    clearInterval(timer);
     const template = document.getElementById('pause-template');
     const pauseScreen = template.content.cloneNode(true).querySelector('.pause-screen');
     document.body.appendChild(pauseScreen);
@@ -115,6 +123,7 @@ function showPausePopup() {
         pauseScreen.remove();
         isPaused = false;
         startTimer();
+        // Restart voice recognition
         isListening = true;
         setupVoiceRecognition();
     });

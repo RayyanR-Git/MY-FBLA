@@ -11,13 +11,25 @@ let isPaused = false;
 // Add Web Speech API setup
 let recognition;
 let isListening = false;
-let micPermissionGranted = false;
+let mediaStream = null;
 
 async function setupVoiceRecognition() {
     try {
         // Check for Chrome's implementation
         if (!('webkitSpeechRecognition' in window)) {
             throw new Error('Browser does not support speech recognition');
+        }
+
+        // Get microphone permission once if we don't have it
+        if (!mediaStream) {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log('Microphone permission granted');
+            } catch (error) {
+                console.error('Microphone permission denied:', error);
+                showAlert('Please allow microphone access to use voice commands');
+                return;
+            }
         }
 
         // Only create a new recognition instance if one doesn't exist
@@ -146,13 +158,12 @@ function showPausePopup() {
         pauseScreen.remove();
         isPaused = false;
         startTimer();
-        // Resume voice recognition
+        // Resume voice recognition using existing stream
         isListening = true;
         try {
             recognition.start();
         } catch (error) {
             console.error('Error resuming recognition:', error);
-            setupVoiceRecognition();
         }
     });
     
@@ -165,7 +176,6 @@ function showPausePopup() {
                 recognition.start();
             } catch (error) {
                 console.error('Error resuming recognition:', error);
-                setupVoiceRecognition();
             }
             restartGame();
         }
@@ -173,6 +183,13 @@ function showPausePopup() {
     
     menuBtn.addEventListener('click', () => {
         if (confirm('Return to menu? All progress will be lost.')) {
+            // Clean up before leaving
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+            if (recognition) {
+                recognition.stop();
+            }
             window.location.href = 'index.html';
         }
     });
@@ -778,3 +795,13 @@ function selectChoice(choice) {
         displayStoryNode(nextNode);
     }
 }
+
+// Clean up function for when leaving the page
+window.addEventListener('beforeunload', () => {
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+    }
+    if (recognition) {
+        recognition.stop();
+    }
+});

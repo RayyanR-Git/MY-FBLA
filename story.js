@@ -20,88 +20,67 @@ async function setupVoiceRecognition() {
             throw new Error('Browser does not support speech recognition');
         }
 
-        // Get microphone permission once if we don't have it
-        if (!mediaStream) {
-            try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                console.log('Microphone permission granted');
-            } catch (error) {
-                console.error('Microphone permission denied:', error);
-                showAlert('Please allow microphone access to use voice commands');
-                return;
-            }
-        }
+        // Create a new recognition instance
+        recognition = new webkitSpeechRecognition();
+        
+        // Settings optimized for Chrome OS
+        recognition.continuous = true; // Changed to true
+        recognition.interimResults = true; // Changed to true
+        recognition.lang = 'en-US';
 
-        // Only create a new recognition instance if one doesn't exist
-        if (!recognition) {
-            recognition = new webkitSpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = false;
-            recognition.lang = 'en-US';
-
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript.toLowerCase().trim();
+        recognition.onresult = (event) => {
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript.toLowerCase().trim();
                 console.log('Recognized:', transcript);
                 
-                if (transcript === "stop") {
+                if (transcript.includes("stop")) {
                     console.log('Stop command detected!');
                     showPausePopup();
+                    break;
                 }
-                
-                // Restart recognition
-                if (!isPaused) {
-                    setTimeout(() => {
-                        try {
-                            recognition.start();
-                        } catch (error) {
-                            console.error('Error restarting recognition:', error);
-                        }
-                    }, 100);
-                }
-            };
+            }
+        };
 
-            recognition.onstart = () => {
-                isListening = true;
-                console.log('Recognition started');
-            };
-
-            recognition.onend = () => {
-                console.log('Recognition ended');
-                // Restart if we should be listening
-                if (isListening && !isPaused) {
-                    setTimeout(() => {
-                        try {
-                            recognition.start();
-                        } catch (error) {
-                            console.error('Error restarting recognition:', error);
-                        }
-                    }, 100);
-                }
-            };
-
-            recognition.onerror = (event) => {
-                console.error('Recognition error:', event.error);
-                if (isListening && !isPaused) {
-                    setTimeout(() => {
-                        try {
-                            recognition.start();
-                        } catch (error) {
-                            console.error('Error restarting recognition:', error);
-                        }
-                    }, 1000);
-                }
-            };
-        }
-
-        // Start recognition if it's not already running
-        if (!isListening) {
-            recognition.start();
+        recognition.onstart = () => {
+            isListening = true;
+            console.log('Recognition started');
             showAlert('Voice commands enabled (say "stop" to pause)');
-        }
+        };
+
+        recognition.onend = () => {
+            console.log('Recognition ended');
+            // Don't auto-restart, wait for user action
+            isListening = false;
+        };
+
+        recognition.onerror = (event) => {
+            console.error('Recognition error:', event.error);
+            isListening = false;
+            
+            if (event.error === 'not-allowed') {
+                showAlert('Click anywhere to enable voice commands');
+                // Add click listener to try again
+                document.body.addEventListener('click', () => {
+                    try {
+                        recognition.start();
+                    } catch (error) {
+                        console.error('Error starting recognition:', error);
+                    }
+                }, { once: true });
+            }
+        };
+
+        // Start recognition
+        recognition.start();
 
     } catch (error) {
         console.error('Setup error:', error);
-        showAlert('Could not start voice recognition');
+        showAlert('Could not start voice recognition. Click to try again.');
+        
+        // Add click listener to try again
+        document.body.addEventListener('click', () => {
+            setupVoiceRecognition();
+        }, { once: true });
     }
 }
 
@@ -158,38 +137,39 @@ function showPausePopup() {
         pauseScreen.remove();
         isPaused = false;
         startTimer();
-        // Resume voice recognition using existing stream
-        isListening = true;
-        try {
-            recognition.start();
-        } catch (error) {
-            console.error('Error resuming recognition:', error);
-        }
+        
+        // Show message to enable voice commands
+        showAlert('Click anywhere to enable voice commands');
+        
+        // Wait for user click to restart recognition
+        document.body.addEventListener('click', () => {
+            try {
+                recognition.start();
+            } catch (error) {
+                console.error('Error starting recognition:', error);
+                setupVoiceRecognition();
+            }
+        }, { once: true });
     });
     
     restartBtn.addEventListener('click', () => {
         if (confirm('Are you sure you want to restart? All progress will be lost.')) {
             pauseScreen.remove();
             isPaused = false;
-            isListening = true;
-            try {
-                recognition.start();
-            } catch (error) {
-                console.error('Error resuming recognition:', error);
-            }
             restartGame();
+            
+            // Show message to enable voice commands
+            showAlert('Click anywhere to enable voice commands');
+            
+            // Wait for user click to restart recognition
+            document.body.addEventListener('click', () => {
+                setupVoiceRecognition();
+            }, { once: true });
         }
     });
     
     menuBtn.addEventListener('click', () => {
         if (confirm('Return to menu? All progress will be lost.')) {
-            // Clean up before leaving
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
-            }
-            if (recognition) {
-                recognition.stop();
-            }
             window.location.href = 'index.html';
         }
     });

@@ -60,13 +60,7 @@ async function setupVoiceRecognition() {
             if (event.error === 'not-allowed') {
                 showAlert('Click anywhere to enable voice commands');
                 // Add click listener to try again
-                document.body.addEventListener('click', () => {
-                    try {
-                        recognition.start();
-                    } catch (error) {
-                        console.error('Error starting recognition:', error);
-                    }
-                }, { once: true });
+                recognition.start();
             }
         };
 
